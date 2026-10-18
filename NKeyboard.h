@@ -83,13 +83,20 @@
 #define KEY_F23       0xFA
 #define KEY_F24       0xFB
 
-#define COUNT 100
-//  Low level key report: up to 6 keys and shift, ctrl etc at once
+// Change this value here, not in the sketch: the .cpp is compiled separately.
+#ifndef NKEYBOARD_MAX_KEYS
+#define NKEYBOARD_MAX_KEYS 100
+#endif
+
+#if NKEYBOARD_MAX_KEYS < 1 || NKEYBOARD_MAX_KEYS > 255
+#error "NKEYBOARD_MAX_KEYS must be between 1 and 255"
+#endif
+//  Low level key report: NKEYBOARD_MAX_KEYS slots plus modifier bits
 typedef struct
 {
   uint8_t modifiers;
   uint8_t reserved;
-  uint8_t keys[COUNT];
+  uint8_t keys[NKEYBOARD_MAX_KEYS];
 } KeyReport;
 
 class Keyboard_ : public Print

@@ -48,7 +48,7 @@ static const uint8_t _hidReportDescriptor[] PROGMEM = {
 	  0x75, 0x08,                    //   REPORT_SIZE (8)
 	  0x81, 0x03,                    //   INPUT (Cnst,Var,Abs)
 
-	0x95, COUNT,                    //   REPORT_COUNT (100)
+	0x95, NKEYBOARD_MAX_KEYS,                    //   REPORT_COUNT (NKEYBOARD_MAX_KEYS)
 	  0x75, 0x08,                    //   REPORT_SIZE (8)
 	  0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
 	  0x25, 0x73,                    //   LOGICAL_MAXIMUM (115)
@@ -60,7 +60,7 @@ static const uint8_t _hidReportDescriptor[] PROGMEM = {
 	  0xc0,                          // END_COLLECTION
 };
 
-Keyboard_::Keyboard_(void)
+Keyboard_::Keyboard_(void) : _keyReport{}
 {
 	static HIDSubDescriptor node(_hidReportDescriptor, sizeof(_hidReportDescriptor));
 	HID().AppendDescriptor(&node);
@@ -244,27 +244,24 @@ size_t Keyboard_::press(uint8_t k)
 			k &= 0x7F;
 		}
 	}
-	bool isNotKeyReport;
-	// Add k to the key report only if it's not already present
-	// and if there is an empty slot.
-	for (int i = 0; i < sizeof(_keyReport.keys) / sizeof(_keyReport.keys[0]); i++)
-	{
-		if (_keyReport.keys[i] != k)
-		{
-			isNotKeyReport = 1;
+	// Modifier-only events use k == 0 and do not need a key slot.
+	bool alreadyPressed = (k == 0);
+	for (uint8_t key : _keyReport.keys) {
+		if (key == k) {
+			alreadyPressed = true;
+			break;
 		}
 	}
 
+	if (!alreadyPressed) {
 
-	if (isNotKeyReport) {
-
-		for (i = 0; i < COUNT; i++) {
+		for (i = 0; i < NKEYBOARD_MAX_KEYS; i++) {
 			if (_keyReport.keys[i] == 0x00) {
 				_keyReport.keys[i] = k;
 				break;
 			}
 		}
-		if (i == COUNT) {
+		if (i == NKEYBOARD_MAX_KEYS) {
 			setWriteError();
 			return 0;
 		}
@@ -299,7 +296,7 @@ size_t Keyboard_::release(uint8_t k)
 
 	// Test the key report to see if k is present.  Clear it if it exists.
 	// Check all positions in case the key is present more than once (which it shouldn't be)
-	for (i = 0; i < COUNT; i++) {
+	for (i = 0; i < NKEYBOARD_MAX_KEYS; i++) {
 		if (0 != k && _keyReport.keys[i] == k) {
 			_keyReport.keys[i] = 0x00;
 		}
@@ -311,16 +308,10 @@ size_t Keyboard_::release(uint8_t k)
 
 void Keyboard_::releaseAll(void)
 {
-	for (int i = 0; i < COUNT; i++)
+	for (int i = 0; i < NKEYBOARD_MAX_KEYS; i++)
 	{ 
 		_keyReport.keys[i] = 0; 
 	}
-	//_keyReport.keys[0] = 0;
-	//_keyReport.keys[1] = 0;
-	//_keyReport.keys[2] = 0;
-	//_keyReport.keys[3] = 0;
-	//_keyReport.keys[4] = 0;
-	//_keyReport.keys[5] = 0;
 	_keyReport.modifiers = 0;
 	sendReport(&_keyReport);
 }
